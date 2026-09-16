@@ -1,9 +1,18 @@
-import React, { useState, useCallback } from 'react';
-import { UploadCloud, FileText, Printer, FileDown, ArrowLeft, CheckCircle2, X, Settings, Users } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { UploadCloud, FileText, Printer, FileDown, ArrowLeft, CheckCircle2, X, Settings, Users, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { TahfizhReport } from './types';
 import { mergeCSVData } from './utils';
 import { ReportCard } from './components/ReportCard';
+
+const SEMESTER_OPTIONS = ["1 / Ganjil", "2 / Genap"];
+const MONTH_OPTIONS = [
+  "Januari", "Februari", "Maret", "April", 
+  "Mei", "Juni", "Juli", "Agustus", 
+  "September", "Oktober", "November", "Desember"
+];
 
 interface DropzoneProps {
   label: string;
@@ -93,10 +102,10 @@ export default function App() {
   const [file3, setFile3] = useState<File | null>(null);
   
   const [settings, setSettings] = useState<AppSettings>({
-    semester: '',
-    month1: 'Bulan 1',
-    month2: 'Bulan 2',
-    month3: 'Bulan 3',
+    semester: '1 / Ganjil',
+    month1: 'Juli',
+    month2: 'Agustus',
+    month3: 'September',
     pengampu: '',
     targetZiyadah: '',
     logo: '',
@@ -105,9 +114,20 @@ export default function App() {
 
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [classInput, setClassInput] = useState('');
+  const [printId, setPrintId] = useState<string | null>(null);
 
   const [students, setStudents] = useState<TahfizhReport[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Hook to handle single-student printing
+  useEffect(() => {
+    if (printId) {
+      setTimeout(() => {
+        window.print();
+        setPrintId(null);
+      }, 100);
+    }
+  }, [printId]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -162,6 +182,44 @@ export default function App() {
     window.print();
   };
 
+  const handleExportPDF = () => {
+    if (students.length === 0) return;
+    
+    const doc = new jsPDF('landscape');
+    
+    doc.setFontSize(16);
+    doc.text("Rekap Data Raport Santri", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Semester: ${settings.semester} | Pengampu: ${settings.pengampu} | Bulan: ${settings.month1} - ${settings.month3}`, 14, 22);
+    
+    const headers = [[
+      "Nama Santri", 
+      "Ziyadah B1", "Ziyadah B2", "Ziyadah B3", "Total Ziyadah", 
+      "Murajaah B1", "Murajaah B2", "Murajaah B3", 
+      "Juziyyah B1", "Juziyyah B2", "Juziyyah B3",
+      "S", "I", "A", "Adab", "Catatan"
+    ]];
+
+    const rows = students.map(s => [
+      s.nama,
+      s.b1.ziyadahCapaian, s.b2.ziyadahCapaian, s.b3.ziyadahCapaian, s.totalZiyadah,
+      s.b1.murajaahCapaian, s.b2.murajaahCapaian, s.b3.murajaahCapaian,
+      s.b1.juziyyahCapaian, s.b2.juziyyahCapaian, s.b3.juziyyahCapaian,
+      s.totalSakit.toString(), s.totalIzin.toString(), s.totalAlpha.toString(),
+      s.finalAdab, s.finalCatatan
+    ]);
+
+    autoTable(doc, {
+      head: headers,
+      body: rows,
+      startY: 28,
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [79, 70, 229] }
+    });
+
+    doc.save("Rekap_Data_Raport.pdf");
+  };
+
   const handleReset = () => {
     setStudents([]);
     setError(null);
@@ -191,6 +249,14 @@ export default function App() {
               <Printer size={16} />
               Cetak {students.length} Raport
             </button>
+            <button
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200 shadow-sm"
+              title="Export tabel rekap data ke format PDF"
+            >
+              <Download size={16} />
+              Export Rekap PDF
+            </button>
           </div>
         )}
       </nav>
@@ -207,7 +273,9 @@ export default function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 bg-slate-50 p-5 rounded-xl border border-slate-100">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Semester</label>
-              <input type="text" value={settings.semester} onChange={e => setSettings({...settings, semester: e.target.value})} placeholder="Misal: 2 / Genap" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <select value={settings.semester} onChange={e => setSettings({...settings, semester: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer">
+                {SEMESTER_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Pengampu</label>
@@ -218,16 +286,22 @@ export default function App() {
               <input type="text" value={settings.targetZiyadah} onChange={e => setSettings({...settings, targetZiyadah: e.target.value})} placeholder="Misal: 1 Juz 5 Hal" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Bulan 1</label>
-              <input type="text" value={settings.month1} onChange={e => setSettings({...settings, month1: e.target.value})} placeholder="Misal: April" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Bulan 1</label>
+              <select value={settings.month1} onChange={e => setSettings({...settings, month1: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer">
+                {MONTH_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Bulan 2</label>
-              <input type="text" value={settings.month2} onChange={e => setSettings({...settings, month2: e.target.value})} placeholder="Misal: Mei" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Bulan 2</label>
+              <select value={settings.month2} onChange={e => setSettings({...settings, month2: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer">
+                {MONTH_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Bulan 3</label>
-              <input type="text" value={settings.month3} onChange={e => setSettings({...settings, month3: e.target.value})} placeholder="Misal: Juni" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Bulan 3</label>
+              <select value={settings.month3} onChange={e => setSettings({...settings, month3: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer">
+                {MONTH_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
             </div>
             <div className="sm:col-span-2 md:col-span-3">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Logo Sekolah (Kiri Atas)</label>
@@ -373,21 +447,34 @@ export default function App() {
                     <p className="text-sm opacity-80">Ditemukan {students.length} data siswa siap cetak.</p>
                   </div>
                 </div>
-                <button
-                  onClick={handlePrint}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors shadow-sm"
-                >
-                  Cetak Semua
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50 font-medium rounded-lg transition-colors shadow-sm"
+                  >
+                    <Download size={18} />
+                    Export Rekap PDF
+                  </button>
+                  <button
+                    onClick={handlePrint}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+                  >
+                    <Printer size={18} />
+                    Cetak Semua
+                  </button>
+                </div>
               </div>
 
-              {/* Render all report cards */}
+              {/* Render all report cards, or just the one selected for print */}
               <div className="flex flex-col items-center gap-12 print:gap-0">
-                {students.map((student) => (
+                {students
+                  .filter(student => printId === null || printId === student.id)
+                  .map((student) => (
                   <ReportCard 
                     key={student.id} 
                     student={student} 
                     settings={settings}
+                    onPrint={() => setPrintId(student.id)}
                   />
                 ))}
               </div>

@@ -5,11 +5,26 @@ import { toReadableJHB } from '../utils';
 interface ReportCardProps {
   student: TahfizhReport;
   settings: AppSettings;
+  onPrint?: () => void;
 }
 
-export const ReportCard: React.FC<ReportCardProps> = ({ student, settings }) => {
+export const ReportCard: React.FC<ReportCardProps> = ({ student, settings, onPrint }) => {
   return (
-    <div className="report-card print-only bg-white w-full max-w-[21cm] mx-auto p-[1cm] sm:p-[1.5cm] text-[12pt] font-serif text-black border border-gray-200 shadow-sm print:shadow-none print:border-none print:p-[1.5cm]">
+    <div className="report-card relative group/card print-only bg-white w-full max-w-[21cm] mx-auto p-[1cm] sm:p-[1.5cm] text-[12pt] font-serif text-black border border-gray-200 shadow-sm print:shadow-none print:border-none print:p-[1.5cm]">
+      
+      {/* Individual Print Button */}
+      {onPrint && (
+        <div className="absolute top-4 right-4 no-print opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
+          <button 
+            onClick={onPrint}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-bold rounded-lg shadow-sm border border-indigo-200 transition-colors cursor-pointer"
+            title={`Cetak Raport ${student.nama}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Cetak Ini
+          </button>
+        </div>
+      )}
       
       {/* Header */}
       <div className="flex items-center justify-between border-b-[3px] border-black pb-4 mb-6">
@@ -41,7 +56,17 @@ export const ReportCard: React.FC<ReportCardProps> = ({ student, settings }) => 
             <tr className="group">
               <td className="w-32 py-1">NAMA SANTRI</td>
               <td className="w-4">:</td>
-              <td>{student.nama || '-'}</td>
+              <td 
+                contentEditable 
+                suppressContentEditableWarning 
+                className="outline-none focus:bg-yellow-50 print:focus:bg-transparent rounded px-1 -ml-1 transition-colors relative font-bold"
+                title="Klik untuk mengedit nama"
+              >
+                {student.nama || '-'}
+                <span className="absolute left-full ml-2 text-[10px] text-gray-400 font-normal no-print opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  Klik untuk edit
+                </span>
+              </td>
             </tr>
             <tr className="group">
               <td className="py-1">KELAS</td>
