@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .ArabicFont {
+    font-family: 'Amiri', serif;
+  }
+  .TrajanFont {
+    font-family: 'Cinzel', 'Trajan Pro', serif;
+  }
+}
+
+@layer base {
+  @media print {
+    body {
+      background-color: white !important;
+    }
+    
+    .no-print {
+      display: none !important;
+    }
+    
+    .report-card {
+      break-after: page;
+      page-break-after: always;
+      margin: 0 !important;
+      padding: 2cm !important;
+      box-shadow: none !important;
+      border: none !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    /* Remove empty space after last page */
+    .report-card:last-child {
+      break-after: auto;
+      page-break-after: auto;
+    }
+
+    @page {
+      margin: 0;
+      size: A4 portrait;
+    }
+  }
+}

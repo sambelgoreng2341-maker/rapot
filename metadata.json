@@ -1,0 +1,6 @@
+{
+  "name": "AutoRaport",
+  "description": "Sistem cetak raport otomatis dengan fitur drag and drop file.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
